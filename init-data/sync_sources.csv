@@ -1,0 +1,2 @@
+source,name,config,default_group_ids,enabled
+filesystem,Sample data,"{""folder_path"": ""C:\\Users\\Aung Myat Hein\\Projects\\Personal\\ManchesterUniversity\\SWE6011\\AIDocAssist\\sample-data""}",general,true

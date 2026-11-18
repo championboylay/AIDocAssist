@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB login.html: card + "how it answers" strip. A username set by the admin instead of a Windows one;
+     the example source in step 3 is an Upload (this app's sources are Filesystem and Upload). -->
+<head th:replace="~{fragments :: head('AI Doc Assist — log in', '/static/login.css')}"></head>
+<body>
+<main class="login-page">
+  <div class="brand"><b>AI Doc Assist</b><span>SIP document assistant</span></div>
+
+  <form class="card" method="post" th:action="@{/login}">
+    <div>
+      <h1>Log in</h1>
+      <div class="sub">Use the username and password your admin gave you.</div>
+    </div>
+
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required autofocus
+             autocapitalize="none" spellcheck="false" placeholder="jdoe" th:value="${username}">
+    </div>
+
+    <div class="field">
+      <div class="field-head">
+        <label for="password">Password</label>
+        <span class="hint">Forgot it? Ask your admin.</span>
+      </div>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+
+    <div th:if="${error}" class="error" role="alert" th:text="${error}"></div>
+
+    <input type="hidden" name="next" th:value="${next}">
+    <button class="btn" type="submit">Log in</button>
+  </form>
+
+  <section class="how" aria-labelledby="how-h">
+    <h2 class="how-h" id="how-h">How AI Doc Assist answers</h2>
+    <ol>
+      <li class="step"><span class="num" aria-hidden="true">1</span><span class="step-name">Ask</span>
+        <div class="atom" aria-hidden="true"><div class="ex-ask">Which fields does the CDD risk request need?
+          <span class="ex-send"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div></div>
+        <p class="step-cap">In plain English, about any document your groups can see.</p></li>
+      <li class="step"><span class="num" aria-hidden="true">2</span><span class="step-name">Every claim cited</span>
+        <div class="atom" aria-hidden="true"><p class="ex-ans">The request needs the customer type and ID number <span class="cite">E1<svg class="tick" viewBox="0 0 12 12"><path d="M2.5 6.3l2.3 2.2 4.7-5"/></svg></span>
+          for every party <span class="cite">E2<svg class="tick" viewBox="0 0 12 12"><path d="M2.5 6.3l2.3 2.2 4.7-5"/></svg></span>.</p></div>
+        <p class="step-cap">Each sentence points at the document it came from, and each quote is checked first.</p></li>
+      <li class="step"><span class="num" aria-hidden="true">3</span><span class="step-name">Check the source</span>
+        <div class="atom" aria-hidden="true"><p class="ex-quote">“Customer type and ID number are required for each party in the request.”</p>
+          <span class="ex-src"><span class="sdot"></span><span>Upload · Example spec ·</span> <span class="open">Download&nbsp;&rarr;</span></span></div>
+        <p class="step-cap">Open the quote, then the original. When the documents don't say, it tells you.</p></li>
+    </ol>
+    <p class="ex-label">Illustration only, not taken from SIP documents.</p>
+  </section>
+
+  <span class="footnote">runs on local models &middot; nothing leaves the network</span>
+</main>
+</body>
+</html>

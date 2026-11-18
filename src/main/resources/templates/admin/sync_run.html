@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_sync_run.html. -->
+<head th:replace="~{fragments :: head(|AI Doc Assist — admin: run of ${entry.name}|, '/static/admin.css')}"></head>
+<body>
+<meta th:if="${run.status == 'running'}" name="refresh" content="5">
+<noscript th:if="${run.status == 'running'}"><meta http-equiv="refresh" content="5"></noscript>
+<th:block th:replace="~{fragments :: topbar('sync')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="|Run of ${entry.name}|">Run</h1>
+    <p><a th:href="@{|/admin/sync/${entry.id}/history|}" th:text="|← History of ${entry.name}|">history</a></p>
+  </div>
+</div>
+
+<div class="panel" style="max-width: 760px;">
+  <dl class="facts">
+    <dt>Started</dt><dd th:text="${run.started}"></dd>
+    <dt>Finished</dt><dd th:text="|${run.finished != null ? run.finished : '—'} (${run.duration})|"></dd>
+    <dt>Triggered by</dt><dd><th:block th:if="${run.by}"><th:block th:text="${run.by}"></th:block> <span class="note" th:text="${run.byUsername}"></span></th:block><span th:unless="${run.by}" class="note">Scheduled</span><span th:if="${run.reread}" class="note"> · re-read all files (dates ignored)</span></dd>
+    <dt>Status</dt><dd th:class="|st-${run.status}|" th:text="${run.status}"></dd>
+    <dt>Records</dt><dd th:text="|${run.inserted} inserted · ${run.updated} updated · ${run.deletedCount} deleted · ${run.skippedCount} skipped|"></dd>
+  </dl>
+  <div th:if="${run.error}" class="msg err" role="note" th:style="${run.status == 'stopped'} ? 'overflow-wrap: anywhere; color: var(--muted); background: var(--surface-2);' : 'overflow-wrap: anywhere;'" th:text="${run.error}"></div>
+</div>
+
+<nav class="chips" aria-label="Filter files by action">
+  <a th:class="${action == ''} ? 'chip-f on' : 'chip-f'" th:href="@{|/admin/sync/${entry.id}/runs/${run.id}|}" th:attr="aria-current=${action == ''} ? 'page' : null" th:text="|All files (${allCount})|">All</a>
+  <a th:each="a : ${actions}" th:class="${action == a} ? 'chip-f on' : 'chip-f'" th:href="@{|/admin/sync/${entry.id}/runs/${run.id}?action=${a}|}"
+     th:attr="aria-current=${action == a} ? 'page' : null" th:text="|${a} (${perAction.get(a)})|">action</a>
+</nav>
+
+<div class="table items" role="table" aria-label="Files in this run">
+  <div class="tr th" role="row"><span role="columnheader">File</span><span role="columnheader">Action</span><span role="columnheader">Chunks</span></div>
+  <div th:each="it : ${items}" class="tr" role="row">
+    <span role="cell" class="path" th:title="${it.path}" th:text="${it.shortPath}">file</span>
+    <span role="cell" th:class="|a-${it.action}|" th:text="${it.action}">action</span>
+    <span role="cell" th:text="${it.chunks}">0</span>
+  </div>
+  <div th:if="${#lists.isEmpty(items)}" class="tr" role="row"><span class="note" style="grid-column: 1 / -1;"
+       th:text="${action != ''} ? |No ${action} files in this run.| : (${run.status == 'running'} ? 'No files recorded yet.' : 'No files recorded.')"></span></div>
+</div>
+<div th:replace="~{fragments :: pager(${p})}"></div>
+<span class="note">One row per file. Files dropped by the filters (lock/temp files, unsupported types…) aren't listed here; see <code>ingest_skips</code>.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

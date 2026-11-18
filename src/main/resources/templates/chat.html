@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB chat.html (Jinja -> Thymeleaf; same markup and classes). Differences: the brand, the assistant's name
+     and mark, no "Search Mantis issues" action (no Mantis here), example questions from chat.examples, and a "password"
+     link in the sidebar foot (every user has a password here). -->
+<head th:replace="~{fragments :: head(${thread} ? |AI Doc Assist — ${thread.title}| : 'AI Doc Assist', '/static/chat.css')}"></head>
+<body>
+<div class="shell">
+  <nav class="side" aria-label="Threads">
+    <div class="side-top">
+      <div class="logo"><b>AI Doc Assist</b><span>SIP documents</span></div>
+      <a th:class="${thread == null} ? 'new-btn current' : 'new-btn'" th:href="@{/}"><span aria-hidden="true">＋</span> New thread</a>
+    </div>
+    <div class="threads">
+      <h2>Recent</h2>
+      <div th:each="t : ${threads}" class="ti-row">
+        <a th:class="${thread != null and thread.id == t.id} ? 'ti current' : 'ti'" th:href="@{|/t/${t.id}|}" th:attr="aria-current=${thread != null and thread.id == t.id} ? 'page' : null">
+          <span class="n" th:text="${t.title}">title</span><span class="w" th:text="|${t.turns} turn${t.turns == 1 ? '' : 's'} · ${t.ago}|">1 turn</span>
+        </a>
+        <a class="ti-del" th:href="|#del-${t.id}|" th:attr="data-dialog=|del-${t.id}|,aria-label=|Delete thread ${t.title}|" aria-haspopup="dialog" title="Delete thread">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.5 4h11M6 4V2.5h4V4M4 4l.7 9.5h6.6L12 4M6.8 6.5v4.5M9.2 6.5v4.5"/></svg>
+        </a>
+      </div>
+      <p th:if="${#lists.isEmpty(threads)}" class="hint" style="padding: 6px 8px;">No threads yet.</p>
+    </div>
+    <div class="side-foot">
+      <span class="who"><span class="avatar" aria-hidden="true" th:text="${user.initial()}">A</span><th:block th:text="${user.name}">Name</th:block></span>
+      <span class="foot-links">
+        <a th:if="${user.isAdmin()}" th:href="@{/admin}">admin</a>
+        <a th:href="@{/account/password}">password</a>
+        <form method="post" th:action="@{/logout}" style="margin: 0;"><button type="submit">logout</button></form>
+      </span>
+    </div>
+  </nav>
+
+  <main class="main">
+  <th:block th:if="${thread == null}">
+    <div class="empty">
+      <div class="intro">
+        <h1>Start a new thread</h1>
+        <p>Answers come only from the documents you have access to, with every claim cited<span class="cite" aria-hidden="true">E1</span>.</p>
+      </div>
+      <div th:if="${error}" class="err" role="alert" th:text="${error}"></div>
+      <!-- The question card: built like an answer card (body + tinted foot), so asking and answering share one form.
+           The scope sits under the question, where it applies. -->
+      <form class="ask ask-card" method="post" th:action="@{/ask}" data-ask>
+        <label for="q" class="vh">Ask a question</label>
+        <textarea id="q" name="question" rows="2" required th:attr="maxlength=${maxQ}" autofocus
+                  placeholder="Ask a question about your documents&hellip;" th:text="${draft}"></textarea>
+        <div class="ask-foot">
+          <div class="scope" title="Your groups: answers come only from documents tagged with one of them">
+            <span class="scope-label">Scope</span>
+            <span th:each="g : ${user.groups}" class="scope-chip" th:text="${#strings.capitalize(g)}">General</span>
+            <span th:if="${#lists.isEmpty(user.groups)}" class="scope-chip">No groups</span>
+          </div>
+          <button class="send" type="submit" aria-label="Ask"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </form>
+      <form th:unless="${#lists.isEmpty(examples)}" class="examples" method="post" th:action="@{/ask}" data-ask aria-labelledby="ex-h">
+        <span class="ex-h" id="ex-h">Example questions</span>
+        <button th:each="ex : ${examples}" type="submit" name="question" th:value="${ex}" th:text="${ex}">example</button>
+      </form>
+      <span class="footnote">runs on local models &middot; nothing leaves the network</span>
+    </div>
+  </th:block>
+  <th:block th:unless="${thread == null}">
+    <header class="thead">
+      <div class="thead-t">
+        <h1 th:title="${thread.title}" th:text="${thread.title}">title</h1>
+        <div class="scope" title="Your groups: answers come only from documents tagged with one of them">
+          <span class="scope-label">Scope</span>
+          <span th:each="g : ${user.groups}" class="scope-chip" th:text="${#strings.capitalize(g)}">General</span>
+          <span th:if="${#lists.isEmpty(user.groups)}" class="scope-chip">No groups</span>
+        </div>
+      </div>
+      <details class="menu">
+        <summary aria-label="Thread options">&#8942;</summary>
+        <div class="menu-pop">
+          <form method="post" th:action="@{|/t/${thread.id}/rename|}">
+            <label for="rename">Rename thread</label>
+            <div class="row"><input id="rename" name="title" type="text" required maxlength="80" th:value="${thread.title}">
+              <button class="btn" type="submit">Save</button></div>
+          </form>
+        </div>
+      </details>
+    </header>
+    <div class="convo" id="convo">
+      <th:block th:each="t : ${turns}">
+        <div th:if="${t.role == 'user'}" class="q"><div class="q-text" th:text="${t.text}">question</div><span class="time" th:text="${t.time}">00:00</span></div>
+
+        <div th:if="${t.role == 'assistant' and t.abstained}" class="a abstain" th:attr="id=${t.last} ? 'latest' : null">
+          <div class="a-head"><span class="mark warn" aria-hidden="true">!</span><span class="who-name">Assistant</span><span class="time" th:text="${t.time}">00:00</span></div>
+          <div class="a-body"><p th:utext="${t.html}">answer</p></div>
+          <div class="a-foot">
+          <!-- Next steps for an unanswered turn (SKB, owner's request there 2026-10-01). The counts are in Retrieval details below. -->
+          <div class="ab-actions" role="group" aria-label="Possible actions">
+            <span class="ab-label">Possible actions:</span>
+            <label class="act" for="follow">Ask another question</label>
+          </div>
+          <a th:unless="${#lists.isEmpty(t.suggested)}" class="more" th:href="|#sg-${t.id}|" th:attr="data-ev=|sg-${t.id}|"
+             th:text="|+${#lists.size(t.suggested)} more found, not used in this answer →|">more</a>
+          <details class="rdet">
+            <summary>Retrieval details</summary>
+            <dl>
+              <dt>Query</dt><dd><th:block th:text="${t.query}"></th:block><span th:if="${t.reformed}" class="note"> (your follow-up, rewritten using the thread)</span></dd>
+              <th:block th:if="${t.retrieved != null}"><dt>Sources retrieved</dt><dd th:text="${t.retrieved}">0</dd></th:block>
+              <dt>Sources used</dt><dd th:text="${#lists.size(t.evidence)}">0</dd>
+            </dl>
+          </details>
+          </div>
+        </div>
+
+        <div th:if="${t.role == 'assistant' and !t.abstained}" class="a" th:attr="id=${t.last} ? 'latest' : null">
+          <div class="a-head"><span class="mark" aria-hidden="true">A</span><span class="who-name">Assistant</span><span class="time" th:text="${t.time}">00:00</span></div>
+          <div class="a-body"><p th:utext="${t.html}">answer</p></div>
+          <div class="a-foot">
+          <span class="hint" title="Open a citation to see its evidence" th:text="|Why this answer? · ${#lists.size(t.evidence)} source${#lists.size(t.evidence) == 1 ? '' : 's'}|">Why this answer?</span>
+          <div class="chips">
+            <a th:each="e, it : ${t.evidence}" class="chip-ev" th:href="|#${e.dom}|" th:attr="data-ev=${e.dom}"><span class="sdot" th:style="|background: ${e.color}|"></span><span class="cite" th:text="${e.label}">E1</span>
+              <span class="t" th:text="${e.shortTitle}">title</span>
+              <!-- Only shown on answered turns, where every quote passed the citation check -->
+              <svg class="tick" th:style="|--i: ${it.index}|" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3l2.3 2.2 4.7-5"/></svg>
+              <span class="vh">, quote checked against its source</span></a>
+          </div>
+          <a th:unless="${#lists.isEmpty(t.suggested)}" class="more" th:href="|#sg-${t.id}|" th:attr="data-ev=|sg-${t.id}|"
+             th:text="|+${#lists.size(t.suggested)} more found, not used in this answer →|">more</a>
+          <details class="rdet">
+            <summary>Retrieval details</summary>
+            <dl>
+              <dt>Query</dt><dd><th:block th:text="${t.query}"></th:block><span th:if="${t.reformed}" class="note"> (your follow-up, rewritten using the thread)</span></dd>
+              <th:block th:if="${t.retrieved != null}"><dt>Sources retrieved</dt><dd th:text="${t.retrieved}">0</dd></th:block>
+              <dt>Sources used</dt><dd th:text="${#lists.size(t.evidence)}">0</dd>
+            </dl>
+          </details>
+          </div>
+        </div>
+      </th:block>
+    </div>
+    <div class="composer">
+      <div th:if="${error}" class="err" role="alert" th:text="${error}"></div>
+      <form class="ask" method="post" th:action="@{/ask}" data-ask>
+        <input type="hidden" name="thread_id" th:value="${thread.id}">
+        <label for="follow" style="position: absolute; left: -9999px;">Ask a follow-up</label>
+        <textarea id="follow" name="question" rows="1" required th:attr="maxlength=${maxQ}" placeholder="Ask a follow-up&hellip;" autofocus th:text="${draft}"></textarea>
+        <button class="send" type="submit" aria-label="Ask"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </form>
+      <div class="ask-keys">Enter to send &middot; Shift + Enter for a new line</div>
+    </div>
+  </th:block>
+  </main>
+
+  <aside class="panel" aria-label="Evidence">
+    <th:block th:each="t : ${turns}" th:if="${t.role == 'assistant'}">
+    <section th:each="e : ${t.evidence}" class="ev" th:id="${e.dom}" th:attr="data-turn=${t.id},aria-label=|Evidence ${e.label}|">
+      <div class="ev-head"><b th:text="|Evidence · ${e.label}|">Evidence</b><a href="#" data-close aria-label="Close evidence">&times;</a></div>
+      <div class="ev-body">
+        <th:block th:if="${e.available}">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="badge" th:style="|color: ${e.color}|" th:text="${e.badge}">SOURCE</span><span class="time" th:text="|updated ${e.updated}|">updated</span></div>
+        <span class="ev-title" th:text="${e.shortTitle}">title</span>
+        <span th:if="${e.title != '' and e.title != e.shortTitle}" class="ev-file" th:text="${e.title}">full title</span>
+        <p class="quote" th:text="|“${e.excerpt}”|">quote</p>
+        <a th:if="${e.url}" th:href="@{${e.url}}" target="_blank" rel="noopener noreferrer" th:text="${e.source == 'upload'} ? 'Download original →' : |Open in ${e.name} →|">Open</a>
+        <span th:if="${e.url == null and e.file != null and e.file != ''}" class="ev-file" th:text="${e.file}">file</span>
+        </th:block>
+        <th:block th:unless="${e.available}">
+        <span class="ev-title" th:text="${e.shortTitle}">title</span><!-- same label as its chip, so two unavailable citations are told apart -->
+        <p class="quote">This evidence is no longer available to you: it was removed from the index, or you no longer have access to it.</p>
+        </th:block>
+        <span class="ev-foot">Open a different citation in any turn to swap this panel. It stays open while you ask follow-ups.</span>
+      </div>
+    </section>
+    <section th:unless="${#lists.isEmpty(t.suggested)}" class="sg" th:id="|sg-${t.id}|" th:attr="data-turn=${t.id}" aria-label="Suggested, not used in this answer">
+      <div class="sg-head"><span>Suggested &middot; not used in this answer</span><a th:if="${#lists.isEmpty(t.evidence)}" href="#" data-close aria-label="Close">&times;</a></div>
+      <ol>
+        <li th:each="s : ${t.suggested}"><span class="rk" th:text="|#${s.rank}|">#1</span>
+          <span class="it">
+            <span class="nm" th:text="${s.shortTitle}">name</span>
+            <span th:if="${s.where != ''}" class="wh" th:text="${s.where}">where</span>
+            <span th:if="${s.snippet != ''}" class="sn" th:text="${s.snippet}">snippet</span>
+            <span class="mt"><span th:text="|${s.name} · updated ${s.updated}|">source</span>
+              <a th:if="${s.url}" th:href="@{${s.url}}" target="_blank" rel="noopener noreferrer" th:text="${s.source == 'upload'} ? 'Download original →' : |Open in ${s.name} →|">Open</a></span>
+          </span></li>
+      </ol>
+    </section>
+    </th:block>
+  </aside>
+</div>
+<!-- One delete confirmation per sidebar thread; outside the sidebar so its styles don't apply. -->
+<dialog th:each="t : ${threads}" class="modal" th:id="|del-${t.id}|" th:attr="aria-labelledby=|del-${t.id}-h|">
+  <div class="dlg">
+    <h2 th:id="|del-${t.id}-h|">Delete this thread?</h2>
+    <p><th:block th:text="|“${t.title}” and its ${t.turns} turn${t.turns == 1 ? '' : 's'} are removed for good.|"></th:block>
+      <b>This can't be undone.</b></p>
+    <div class="actions">
+      <form method="post" th:action="@{|/t/${t.id}/delete|}">
+        <input type="hidden" name="current" th:value="${thread != null} ? ${thread.id} : ''">
+        <button class="danger" type="submit">Delete</button></form>
+      <form method="dialog"><button type="submit">Cancel</button></form>
+    </div>
+  </div>
+</dialog>
+<script th:src="@{/static/chat.js?v=1}"></script>
+</body>
+</html>

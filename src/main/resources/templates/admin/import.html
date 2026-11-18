@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_import.html. SKB's username columns plus email (optional) and initial_password. -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: import users', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('users')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Import users from CSV</h1>
+    <p><a th:href="@{/admin/users}">&larr; All users</a></p>
+  </div>
+</div>
+
+<form th:if="${preview == null and errors == null}" class="panel" method="post" th:action="@{/admin/users-import}" enctype="multipart/form-data">
+  <div class="meta" style="font-size: 12.5px;">
+    One row per user. First row = column names:
+    <pre style="font: 12px var(--mono); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; overflow-x: auto; margin: 8px 0;">username,name,groups,is_admin,active,email,initial_password
+mei.tan,Mei Tan,general;contracts,false,true,mei.tan@startinpoint.com,
+new.person,New Person,general,false,true,,a-first-password</pre>
+    <ul style="margin: 0; padding-left: 18px; color: var(--muted);">
+      <li><b>username</b> and <b>groups</b> are required; several groups are separated by <code>;</code>.</li>
+      <li>The file sets each listed user's groups <b>exactly</b>; groups not listed are removed.</li>
+      <li>Users not in the file are left as they are (nobody is deactivated implicitly).</li>
+      <li>A blank name / email / is_admin / active / initial_password keeps the current value for existing users. Email is optional.</li>
+      <li>New users need a <b>name</b> and an <b>initial_password</b> (at least 10 characters). For an existing user, an initial_password sets a new one.</li>
+      <li>Nothing changes until you confirm the preview.</li>
+    </ul>
+  </div>
+  <div class="field">
+    <label for="file">CSV file (UTF-8)</label>
+    <input id="file" name="file" type="file" accept=".csv,text/csv" required>
+  </div>
+  <div class="actions"><button class="btn-sm" type="submit">Preview</button></div>
+</form>
+
+<th:block th:unless="${preview == null and errors == null}">
+<div th:unless="${#lists.isEmpty(errors)}" class="msg err" role="alert">Nothing was imported. Fix the file and upload it again:
+  <ul><li th:each="e : ${errors}" th:text="${e}"></li></ul></div>
+
+<th:block th:if="${p != null and p.total > 0}">
+<p class="meta" style="margin: 0;"><th:block th:if="${filename != ''}" th:text="|${filename}: |"></th:block><th:block
+   th:text="|${counts['add']} to add, ${counts['update']} to update, ${counts['unchanged']} unchanged.|"></th:block></p>
+<div class="table" role="table" aria-label="Import preview">
+  <div class="tr th" role="row" style="grid-template-columns: 0.8fr 2.2fr 4fr;"><span role="columnheader">Change</span><span role="columnheader">Username</span><span role="columnheader">Details</span></div>
+  <div th:each="c : ${changes}" class="tr" role="row" style="grid-template-columns: 0.8fr 2.2fr 4fr;">
+    <span role="cell" th:class="${c.action == 'add'} ? 'on' : (${c.action == 'update'} ? '' : 'off')" th:text="${c.action}">add</span>
+    <span role="cell" class="email" th:text="${c.username}">username</span>
+    <span role="cell" th:text="${#strings.listJoin(c.details, ' · ')}">details</span>
+  </div>
+</div>
+<!-- Preview paging: the file only lives in this page, so Previous/Next re-send it (POST forms). -->
+<div class="pager">
+  <span th:text="|Showing ${p.first}–${p.last} of ${p.total}|">Showing</span>
+  <nav aria-label="Preview pages">
+    <form th:if="${p.page > 1}" method="post" th:action="@{/admin/users-import/page}" style="margin: 0;">
+      <textarea name="csv_text" hidden aria-hidden="true" th:text="${csvText}"></textarea>
+      <input type="hidden" name="filename" th:value="${filename}">
+      <input type="hidden" name="page" th:value="${p.page - 1}">
+      <button class="link-btn" type="submit" style="font-size: 12px;">&larr; Previous</button>
+    </form>
+    <span th:unless="${p.page > 1}" class="disabled">&larr; Previous</span>
+    <span th:text="|Page ${p.page} of ${p.pages}|">Page</span>
+    <form th:if="${p.page < p.pages}" method="post" th:action="@{/admin/users-import/page}" style="margin: 0;">
+      <textarea name="csv_text" hidden aria-hidden="true" th:text="${csvText}"></textarea>
+      <input type="hidden" name="filename" th:value="${filename}">
+      <input type="hidden" name="page" th:value="${p.page + 1}">
+      <button class="link-btn" type="submit" style="font-size: 12px;">Next &rarr;</button>
+    </form>
+    <span th:unless="${p.page < p.pages}" class="disabled">Next &rarr;</span>
+  </nav>
+</div>
+</th:block>
+
+<div class="actions">
+  <form th:if="${#lists.isEmpty(errors) and p != null and p.total > 0}" method="post" th:action="@{/admin/users-import/confirm}">
+    <!-- textarea, not <input type=hidden>: keeps the file's line breaks exactly -->
+    <textarea name="csv_text" hidden aria-hidden="true" th:text="${csvText}"></textarea>
+    <button class="btn-sm" type="submit">Confirm import</button>
+  </form>
+  <a class="btn-sm btn-outline" th:href="@{/admin/users-import}" th:text="${#lists.isEmpty(errors)} ? 'Cancel' : 'Upload another file'">Cancel</a>
+</div>
+</th:block>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

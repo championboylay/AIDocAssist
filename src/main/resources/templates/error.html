@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Spring Boot renders this for any error status (403 admins only, 404, 500). No details leaked. -->
+<head th:replace="~{fragments :: head('AI Doc Assist', null)}"></head>
+<body>
+<main class="centered">
+  <div class="stack">
+    <div class="brand"><b>AI Doc Assist</b><span>SIP document assistant</span></div>
+    <div class="card">
+      <h1 th:text="${status == 403} ? 'Admins only' : (${status == 404} ? 'Not found' : 'Something went wrong')">Error</h1>
+      <div class="sub" th:text="${status == 403} ? 'This page needs an admin account.' : (${status == 404} ? 'There is nothing at this address.' : 'Try again; if it keeps happening, tell your admin.')"></div>
+      <a th:href="@{/}">&larr; Back</a>
+    </div>
+  </div>
+</main>
+</body>
+</html>

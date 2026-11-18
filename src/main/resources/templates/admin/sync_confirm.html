@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_sync_confirm.html: shown when the Sync dialog can't open (JavaScript off). -->
+<head th:replace="~{fragments :: head(|AI Doc Assist — admin: sync ${entry.name}?|, '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('sync')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="|Sync ${entry.name}?|">Sync?</h1>
+    <p><a th:href="@{/admin/sync}">&larr; All sync sources</a></p>
+  </div>
+</div>
+<div class="panel">
+  <th:block th:replace="~{fragments :: syncConfirm(${entry}, false)}"></th:block>
+</div>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

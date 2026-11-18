@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Shared pieces, ported from SKB base.html, admin_base.html, _pager.html and _user_delete.html. -->
+
+<head th:fragment="head(title, css)">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title th:text="${title}">AI Doc Assist</title>
+<link rel="icon" th:href="@{/static/favicon.svg}" type="image/svg+xml">
+<link rel="stylesheet" th:href="@{/static/base.css}">
+<link th:if="${css}" rel="stylesheet" th:href="@{${css}}">
+</head>
+
+<th:block th:fragment="topbar(tab)">
+<header class="topbar">
+  <div class="logo"><b>AI Doc Assist</b><span class="badge">ADMIN</span></div>
+  <div class="right">
+    <a class="back" th:href="@{/}">&larr; Back to AI Doc Assist</a>
+    <span class="me"><span class="avatar" aria-hidden="true" th:text="${user.initial()}">A</span><th:block th:text="${user.name}">Name</th:block></span>
+  </div>
+</header>
+<nav class="tabs" aria-label="Admin sections">
+  <a th:class="${tab == 'users'} ? 'tab active' : 'tab'" th:href="@{/admin/users}" th:attr="aria-current=${tab == 'users'} ? 'page' : null">Users</a>
+  <a th:class="${tab == 'groups'} ? 'tab active' : 'tab'" th:href="@{/admin/groups}" th:attr="aria-current=${tab == 'groups'} ? 'page' : null">Groups</a>
+  <a th:class="${tab == 'sync'} ? 'tab active' : 'tab'" th:href="@{/admin/sync}" th:attr="aria-current=${tab == 'sync'} ? 'page' : null">Sync</a>
+  <a th:class="${tab == 'retrieval'} ? 'tab active' : 'tab'" th:href="@{/admin/retrieval}" th:attr="aria-current=${tab == 'retrieval'} ? 'page' : null">Retrieval</a>
+  <a th:class="${tab == 'quota'} ? 'tab active' : 'tab'" th:href="@{/admin/quota}" th:attr="aria-current=${tab == 'quota'} ? 'page' : null">Quota</a>
+</nav>
+</th:block>
+
+<div th:fragment="pager(p)" class="pager">
+  <span th:text="|Showing ${p.first}–${p.last} of ${p.total}|">Showing</span>
+  <!-- Always shown, even on a single page (owner's preference in SKB): the controls are just disabled. -->
+  <nav aria-label="Pages">
+    <a th:if="${p.prevUrl}" th:href="${p.prevUrl}" rel="prev">&larr; Previous</a>
+    <span th:unless="${p.prevUrl}" class="disabled" aria-disabled="true">&larr; Previous</span>
+    <span th:text="|Page ${p.page} of ${p.pages}|">Page</span>
+    <a th:if="${p.nextUrl}" th:href="${p.nextUrl}" rel="next">Next &rarr;</a>
+    <span th:unless="${p.nextUrl}" class="disabled" aria-disabled="true">Next &rarr;</span>
+  </nav>
+</div>
+
+<!-- Delete-user link + its confirm dialog (opened by admin.js), on the Users table and the edit page.
+     Not offered for yourself; the server refuses that too. -->
+<a th:fragment="deleteLink(u, label)" th:href="@{|/admin/users/${u.id}#del-${u.id}|}" th:attr="data-dialog=|del-${u.id}|,aria-label=|Delete ${u.name}|"
+   aria-haspopup="dialog" style="color: var(--primary);" th:text="${label}">Delete</a>
+
+<dialog th:fragment="deleteDialog(u)" class="modal" th:id="|del-${u.id}|" th:attr="aria-labelledby=|del-${u.id}-h|">
+  <div class="panel">
+    <h2 th:id="|del-${u.id}-h|" style="margin: 0; font-size: 16px; font-weight: 600;" th:text="|Delete ${u.name}?|">Delete?</h2>
+    <p style="margin: 0; font-size: 13px; color: var(--text-2);"
+       th:text="|${u.username} leaves the user list, loses their groups and can't log in any more. Their chat threads and their name in the sync history are kept. Adding ${u.username} again brings them back with their old threads, but not their groups.|">
+    </p>
+    <div class="actions">
+      <form method="post" th:action="@{|/admin/users/${u.id}/delete|}"><button class="btn-sm btn-danger" type="submit">Delete</button></form>
+      <form method="dialog"><button class="btn-sm btn-outline" type="submit">Cancel</button></form>
+    </div>
+  </div>
+</dialog>
+
+<!-- Admin icons (SKB _icons.html): one family, 24px grid, 1.8 stroke, currentColor, drawn inline (nothing loaded from outside). -->
+<svg th:fragment="icon(name, size)" class="i" th:width="${size}" th:height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><th:block th:switch="${name}">
+  <th:block th:case="'upload'"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></th:block>
+  <th:block th:case="'folder'"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></th:block>
+  <th:block th:case="'check'"><path d="M5 12.5l4.5 4.5L19 7.5"/></th:block>
+  <th:block th:case="'x'"><path d="M6 6l12 12M18 6L6 18"/></th:block>
+  <th:block th:case="'warn'"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.01"/></th:block>
+  <th:block th:case="'sync'"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></th:block>
+  <th:block th:case="'stop'"><rect x="7" y="7" width="10" height="10" rx="1.5"/></th:block>
+  <th:block th:case="'circle'"><circle cx="12" cy="12" r="6.5"/></th:block>
+</th:block></svg>
+
+<!-- A file drop zone (SKB _dropzone.html). The real input type=file covers the whole zone, invisible: clicking opens the
+     picker and dropping files lands on the input natively, even without JS. admin.js adds the drag highlight and the list of
+     chosen files (flagging any the server will refuse). formId ties the input to a form elsewhere (the Sync dialog). -->
+<div th:fragment="dropzone(name, accept, multiple, formId, label)" class="dropzone" th:attr="data-accept=${accept},data-max=${20 * 1024 * 1024}">
+  <input class="dz-input" type="file" th:name="${name}" th:accept="${accept}" required th:multiple="${multiple}"
+         th:attr="form=${formId},aria-label=${label}">
+  <svg class="dz-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0l-4 4m4-4l4 4M5 14v4a2 2 0 002 2h10a2 2 0 002-2v-4"
+       fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <span class="dz-title"><th:block th:text="${label}">Drag files here</th:block> <span class="dz-or">or <u>browse</u></span></span>
+  <span class="dz-hint" th:text="|${#strings.replace(accept, ',', ' ')} · up to 20 MB each|">types</span>
+  <ul class="dz-list" aria-live="polite"></ul>
+</div>
+
+<!-- What a sync will do, then Start / Cancel (SKB _sync_confirm.html). Shared by the confirmation page and the Sync dialog.
+     inDialog: Cancel closes the dialog (native form method="dialog") instead of linking back. -->
+<th:block th:fragment="syncConfirm(entry, inDialog)">
+  <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; font-size: 13px;">
+    <dt class="note" style="font-size: 12px;">Source</dt><dd style="margin: 0;" th:text="${entry.upload()} ? 'Upload' : 'Filesystem'">Filesystem</dd>
+    <dt class="note" style="font-size: 12px;" th:text="${entry.upload()} ? 'File' : 'Folder path'">Folder path</dt><dd style="margin: 0; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere;"
+        th:text="${entry.upload()} ? (${entry.fileName} ? |${entry.fileName} · ${entry.fileKb} KB| : 'file missing') : ${entry.folder}">folder</dd>
+    <dt class="note" style="font-size: 12px;">Tags applied</dt>
+    <dd style="margin: 0;" class="pills"><span th:each="t : ${entry.tags}" th:class="|g g-${t}|" th:text="${t}">tag</span></dd>
+    <dt class="note" style="font-size: 12px;">Now</dt><dd style="margin: 0;" th:text="|${entry.records} files · last synced ${entry.synced}|">now</dd>
+  </dl>
+
+  <div class="meta" style="font-size: 12.5px; color: var(--note);">
+    <ul style="margin: 0; padding-left: 18px;">
+      <li th:unless="${entry.upload()}">New and changed files are read and embedded; unchanged files are skipped.</li>
+      <li th:if="${entry.upload()}">The new version replaces the stored file (it may have another name; the entry keeps its name). Only sections that changed are embedded again.</li>
+      <li>Everything pulled in becomes visible to users in: <b th:text="${#strings.listJoin(entry.tags, ', ')}">tags</b>.</li>
+      <li>It runs in the background and can take a few minutes (PDFs are slow). You can leave this page.</li>
+    </ul>
+  </div>
+
+  <div th:if="${!entry.enabled}" class="msg err" role="alert">This entry is disabled. Enable it under Edit before syncing.</div>
+  <div th:if="${entry.enabled and entry.busy()}" class="msg err" role="alert">A sync of this entry is already queued or running.</div>
+
+  <!-- An upload's Sync = a new version of its file, then sync (CLAUDE.md "Upload"). No Re-read: the app only holds what was uploaded. -->
+  <th:block th:if="${entry.enabled and !entry.busy() and entry.upload()}"><div th:replace="~{fragments :: dropzone('files', '.docx,.md,.pdf,.txt,.xlsx', false, |run-${entry.id}|, 'Drag the new version here')}"></div></th:block>
+  <!-- Outside the form (so it sits above the buttons); form= ties it to the Start sync form. -->
+  <label th:if="${entry.enabled and !entry.busy() and !entry.upload()}" class="check"><input type="checkbox" name="reread" th:attr="form=|run-${entry.id}|">
+    <span>Re-read all files<small>Ignore dates and read every file again, so improvements to how documents are read
+      reach unchanged files too. Only sections whose text changed are embedded again. Takes longer: every file is parsed again.</small></span></label>
+
+  <div class="actions">
+    <form th:if="${entry.enabled and !entry.busy()}" method="post" th:action="@{|/admin/sync/${entry.id}/run|}" th:id="|run-${entry.id}|"
+          th:attr="enctype=${entry.upload()} ? 'multipart/form-data' : null"><button class="btn-sm" type="submit" th:text="${entry.upload()} ? 'Sync' : 'Start sync'">Start sync</button></form>
+    <form th:if="${inDialog}" method="dialog"><button class="btn-sm btn-outline" type="submit">Cancel</button></form>
+    <a th:unless="${inDialog}" class="btn-sm btn-outline" th:href="@{/admin/sync}">Cancel</a>
+  </div>
+</th:block>
+
+<!-- The Sync dialog for one entry; its opener is a link with data-dialog="sync-<id>" (see admin.js). -->
+<dialog th:fragment="syncDialog(entry)" class="modal" th:id="|sync-${entry.id}|" th:attr="aria-labelledby=|sync-${entry.id}-h|">
+  <div class="panel">
+    <h2 th:id="|sync-${entry.id}-h|" style="margin: 0; font-size: 16px; font-weight: 600;" th:text="|Sync ${entry.name}?|">Sync?</h2>
+    <th:block th:replace="~{fragments :: syncConfirm(${entry}, true)}"></th:block>
+  </div>
+</dialog>
+
+</html>

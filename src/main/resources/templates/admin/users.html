@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_users.html. Username column as SKB; the optional email shown as a note beside it. -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: users &amp; groups', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('users')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Users</h1>
+    <p th:text="|${total} users · ${activeCount} active|">users</p>
+  </div>
+  <div class="actions">
+    <a class="btn-sm btn-outline" th:href="@{/admin/users-import}">Import CSV&hellip;</a>
+    <a class="btn-sm" th:href="@{/admin/users/new}"><span aria-hidden="true">+</span> Add user</a>
+  </div>
+</div>
+
+<div th:if="${saved != ''}" class="msg ok" role="status" th:text="|Saved ${saved}.|"></div>
+<div th:if="${deleted != ''}" class="msg ok" role="status" th:text="|Deleted ${deleted}. Their threads are kept; adding ${deleted} again brings them back.|"></div>
+<div th:if="${imported >= 0}" class="msg ok" role="status" th:text="|Import done: ${imported} user(s) added or updated.|"></div>
+
+<div class="table rows-stack" role="table" aria-label="Users">
+  <div class="tr th" role="row">
+    <span role="columnheader">Name</span><span role="columnheader">Username</span><span role="columnheader">Groups</span>
+    <span role="columnheader">Status</span><span role="columnheader">Actions</span>
+  </div>
+  <div th:each="u : ${users}" th:class="${u.active()} ? 'tr' : 'tr inactive'" role="row">
+    <span class="name" role="cell"><th:block th:text="${u.name}">Name</th:block><span th:if="${u.isAdmin()}" class="admin-tag">admin</span></span>
+    <span class="email" role="cell"><th:block th:text="${u.username}">username</th:block> <span th:if="${u.email}" class="note" th:text="${u.email}"></span></span>
+    <span class="pills" role="cell">
+      <span th:each="g : ${u.groups}" th:class="|g g-${g}|" th:text="${g}">group</span>
+      <span th:if="${#lists.isEmpty(u.groups)}" class="note">no groups: sees nothing</span>
+    </span>
+    <span role="cell">
+      <span th:if="${u.active()}" class="status on"><span class="dot"></span>Active</span>
+      <span th:unless="${u.active()}" class="status off"><span class="dot"></span>Inactive</span>
+    </span>
+    <span role="cell" style="display: flex; gap: 12px;"><a th:href="@{|/admin/users/${u.id}|}" th:attr="aria-label=|Edit ${u.name}|">Edit</a>
+      <th:block th:if="${u.id != user.id}"><a th:replace="~{fragments :: deleteLink(${u}, 'Delete')}"></a></th:block></span>
+    <th:block th:if="${u.id != user.id}"><dialog th:replace="~{fragments :: deleteDialog(${u})}"></dialog></th:block>
+  </div>
+</div>
+
+<div th:replace="~{fragments :: pager(${p})}"></div>
+
+<span class="note">Groups are sensitivity categories (e.g. finance, contracts, hr-cv, general), not teams. A user sees a document only if they share one of its groups. Manage them under <a th:href="@{/admin/groups}">Groups</a>.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

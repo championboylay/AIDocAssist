@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_group_form.html. -->
+<head th:replace="~{fragments :: head(${group} ? |AI Doc Assist — admin: group ${group.name}| : 'AI Doc Assist — admin: add group', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('groups')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="${group} ? |Group ${group.name}| : 'Add group'">Add group</h1>
+    <p><a th:href="@{/admin/groups}">&larr; All groups</a></p>
+  </div>
+</div>
+
+<form class="panel" method="post" th:action="${group} ? @{|/admin/groups/${group.id}|} : @{/admin/groups/new}">
+  <div th:unless="${#lists.isEmpty(errors)}" class="msg err" role="alert"><div th:each="e : ${errors}" th:text="${e}"></div></div>
+  <div class="field">
+    <label for="name" th:text="${group} ? 'Rename to' : 'Name'">Name</label>
+    <input id="name" name="name" type="text" required pattern="[a-z0-9][a-z0-9\-]{1,39}" th:value="${name}"
+           aria-describedby="name-help">
+    <span class="note" id="name-help">Lowercase letters, digits and hyphens, e.g. <code>hr-cv</code>.
+      <th:block th:if="${group != null and group.inUse()}" th:text="|Renaming updates it everywhere: ${group.users} user(s), ${group.syncs} sync entr${group.syncs == 1 ? 'y' : 'ies'} and ${group.records} document(s) keep the same access.|"></th:block></span>
+  </div>
+  <div class="actions">
+    <button class="btn-sm" type="submit" th:text="${group} ? 'Rename' : 'Add group'">Save</button>
+    <a class="btn-sm btn-outline" th:href="@{/admin/groups}">Cancel</a>
+  </div>
+</form>
+
+<form th:if="${group}" class="panel" method="post" th:action="@{|/admin/groups/${group.id}/delete|}">
+  <div>
+    <h1 style="margin: 0; font-size: 15px;">Delete group</h1>
+    <p th:if="${group.inUse()}" class="note" style="font-size: 12px; margin: 6px 0 0;"
+       th:text="|Can't delete: still used by ${group.users} user(s), ${group.syncs} sync entr${group.syncs == 1 ? 'y' : 'ies'} and ${group.records} document(s). Deleting it would hide every document tagged only with it from everyone. Remove it from those first.|"></p>
+    <p th:unless="${group.inUse()}" class="note" style="font-size: 12px; margin: 6px 0 0;">No user, sync entry or document uses this group, so deleting it changes no one's access.</p>
+  </div>
+  <div class="actions"><button class="btn-sm btn-danger" type="submit" th:disabled="${group.inUse()}" th:text="|Delete ${group.name}|">Delete</button></div>
+</form>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

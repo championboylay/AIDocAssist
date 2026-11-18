@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_user_form.html. Username + password fields instead of the LDAP dropdown; email optional. -->
+<head th:replace="~{fragments :: head(${isNew} ? 'AI Doc Assist — admin: add user' : |AI Doc Assist — admin: edit ${target.name}|, '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('users')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="${isNew} ? 'Add user' : |Edit ${target.name}|">Add user</h1>
+    <p><a th:href="@{/admin/users}">&larr; All users</a></p>
+  </div>
+</div>
+
+<form class="panel" method="post" th:action="${isNew} ? @{/admin/users/new} : @{|/admin/users/${target.id}|}">
+  <div th:unless="${#lists.isEmpty(errors)}" class="msg err" role="alert">Please fix:<ul><li th:each="e : ${errors}" th:text="${e}"></li></ul></div>
+
+  <div class="field">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" required autocapitalize="none" spellcheck="false" maxlength="64"
+           placeholder="jdoe" th:value="${form.username}">
+    <span class="note">They log in with this. Lowercase letters, digits and . _ $ -</span>
+  </div>
+  <div class="field">
+    <label for="email">Email <span class="note" style="font-weight: 400;">(optional)</span></label>
+    <input id="email" name="email" type="email" autocapitalize="none" spellcheck="false" th:value="${form.email}">
+    <span class="note">Contact address only; not used to log in.</span>
+  </div>
+  <div class="field">
+    <label for="name">Display name</label>
+    <input id="name" name="name" type="text" required th:value="${form.name}">
+    <span class="note">Shown in the chat and the admin pages.</span>
+  </div>
+  <div class="field">
+    <label for="password" th:text="${isNew} ? 'Initial password' : 'New password'">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" th:required="${isNew}">
+    <span class="note" th:text="${isNew} ? 'At least 10 characters. Give it to them directly; they can change it after logging in.'
+                                          : 'Leave empty to keep the current one. Setting one logs them out everywhere (for a forgotten password).'">note</span>
+  </div>
+
+  <fieldset class="field" style="border: 0; padding: 0; margin: 0;">
+    <legend style="font-size: 11.5px; font-weight: 600; color: var(--text-2); margin-bottom: 8px;">Groups: what this person can see</legend>
+    <div class="pills">
+      <label th:each="g : ${allGroups}" class="toggle"><input type="checkbox" name="groups" th:value="${g}" th:checked="${#lists.contains(form.groups, g)}"><span th:text="${g}">group</span></label>
+    </div>
+    <span class="note">A document is visible if it shares at least one group with the user. No groups = sees nothing.</span>
+  </fieldset>
+
+  <label class="check"><input type="checkbox" name="active" th:checked="${form.active()}">
+    <span>Active<small>Inactive users can't log in, and are logged out on their next click.</small></span></label>
+  <label class="check"><input type="checkbox" name="is_admin" th:checked="${form.isAdmin()}">
+    <span>Admin<small>Can manage users, groups and sync sources, as well as use the chat.</small></span></label>
+
+  <div class="actions">
+    <button class="btn-sm" type="submit" th:text="${isNew} ? 'Add user' : 'Save changes'">Save</button>
+    <a class="btn-sm btn-outline" th:href="@{/admin/users}">Cancel</a>
+    <span th:if="${!isNew and target.id != user.id}" style="margin-left: auto; font-size: 12px;"><a th:replace="~{fragments :: deleteLink(${target}, 'Delete user')}"></a></span>
+  </div>
+</form>
+<th:block th:if="${!isNew and target.id != user.id}"><dialog th:replace="~{fragments :: deleteDialog(${target})}"></dialog></th:block>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

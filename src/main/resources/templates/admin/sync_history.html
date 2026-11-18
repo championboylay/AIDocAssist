@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_sync_history.html. -->
+<head th:replace="~{fragments :: head(|AI Doc Assist — admin: history of ${entry.name}|, '/static/admin.css')}"></head>
+<body>
+<meta th:if="${anyRunning}" name="refresh" content="5">
+<noscript th:if="${anyRunning}"><meta http-equiv="refresh" content="5"></noscript>
+<th:block th:replace="~{fragments :: topbar('sync')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="|History: ${entry.name}|">History</h1>
+    <p><th:block th:text="${entry.upload()} ? 'Upload' : 'Filesystem'"></th:block> · <span style="font-family: var(--mono); font-size: 12px;" th:text="${entry.upload()} ? ${entry.fileName} : ${entry.folder}"></span>
+       · <a th:href="@{/admin/sync}">&larr; All sync sources</a></p>
+    <p th:if="${entry.deleted}" class="note" style="margin: 4px 0 0;" th:text="|Deleted ${entry.deleted}: nothing from it is searchable any more; only this history is kept.|"></p>
+  </div>
+  <div th:unless="${entry.deleted}" class="actions">
+    <th:block th:if="${entry.enabled and !entry.busy()}"><a class="btn-sm" th:href="@{|/admin/sync/${entry.id}/run|}" th:attr="data-dialog=|sync-${entry.id}|" aria-haspopup="dialog">Sync&hellip;</a><dialog th:replace="~{fragments :: syncDialog(${entry})}"></dialog></th:block>
+    <form th:if="${entry.status == 'syncing' and !entry.stopping}" method="post" th:action="@{|/admin/sync/${entry.id}/stop|}" style="margin: 0;"><input type="hidden" name="back" value="history">
+      <button class="btn-sm btn-danger" type="submit">Stop sync</button></form>
+    <span th:if="${entry.stopping}" class="note">Stopping after the current file&hellip;</span>
+    <span th:if="${entry.queued and entry.status != 'syncing'}" class="note">Queued: starts when the sync before it finishes&hellip;</span>
+    <a class="btn-sm btn-outline" th:href="@{|/admin/sync/${entry.id}|}">Edit</a>
+  </div>
+</div>
+
+<div th:if="${msg != ''}" class="msg ok" role="status" th:text="${msg}"></div>
+<p th:if="${anyRunning}" class="note" style="margin: 0;">A run is queued or in progress; this page refreshes every 5 seconds.</p>
+
+<div class="table runs" role="table" aria-label="Sync runs">
+  <div class="tr th" role="row">
+    <span role="columnheader">Started</span><span role="columnheader">Triggered by</span><span role="columnheader">Status</span>
+    <span role="columnheader">Duration</span><span role="columnheader">Inserted</span><span role="columnheader">Updated</span>
+    <span role="columnheader">Deleted</span><span role="columnheader">Skipped</span><span role="columnheader">Files</span>
+  </div>
+  <div th:each="r : ${runs}" class="tr" role="row">
+    <span role="cell" class="num" th:text="${r.started}">started</span>
+    <span role="cell"><th:block th:if="${r.by}" th:text="${r.by}"></th:block><span th:unless="${r.by}" class="note">Scheduled</span></span>
+    <span role="cell" th:class="|st st-${r.status}|"><th:block th:text="${r.status == 'running'} ? 'running…' : ${r.status}"></th:block><span th:if="${r.reread}" class="note"> · re-read all</span></span>
+    <span role="cell" class="num" th:text="${r.duration}">0s</span>
+    <span role="cell" th:class="${r.inserted == 0} ? 'num zero' : 'num'" th:text="${r.inserted}">0</span>
+    <span role="cell" th:class="${r.updated == 0} ? 'num zero' : 'num'" th:text="${r.updated}">0</span>
+    <span role="cell" th:class="${r.deletedCount == 0} ? 'num zero' : 'num'" th:text="${r.deletedCount}">0</span>
+    <span role="cell" th:class="${r.skippedCount == 0} ? 'num zero' : 'num'" th:text="${r.skippedCount}">0</span>
+    <span role="cell"><a th:href="@{|/admin/sync/${entry.id}/runs/${r.id}|}" th:attr="aria-label=|Files of the run started ${r.started}|">View</a></span>
+    <span th:if="${r.error}" class="run-err" role="note" th:style="${r.status == 'stopped'} ? 'color: var(--muted); background: var(--surface-2);' : ''" th:text="${r.error}">error</span>
+  </div>
+  <div th:if="${#lists.isEmpty(runs)}" class="tr" role="row"><span class="note" style="grid-column: 1 / -1;">No runs yet.</span></div>
+</div>
+<div th:replace="~{fragments :: pager(${p})}"></div>
+<span class="note">Counts are records (chunks). Inserted = new, updated = content changed, deleted = no longer produced by the source, skipped = unchanged.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

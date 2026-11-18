@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_groups.html. -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: groups', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('groups')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Groups</h1>
+    <p>Sensitivity categories, not teams. A document carries the group(s) of the sync entry it came from; a user sees it only if they share one of them.</p>
+  </div>
+  <div class="actions"><a class="btn-sm" th:href="@{/admin/groups/new}"><span aria-hidden="true">+</span> Add group</a></div>
+</div>
+
+<div th:if="${saved != ''}" class="msg ok" role="status" th:text="|Saved group ${saved}.|"></div>
+<div th:if="${deleted != ''}" class="msg ok" role="status" th:text="|Deleted group ${deleted}.|"></div>
+
+<div class="table" role="table" aria-label="Groups">
+  <div class="tr th" role="row" style="grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr;">
+    <span role="columnheader">Group</span><span role="columnheader">Users</span><span role="columnheader">Sync entries</span>
+    <span role="columnheader">Documents</span><span role="columnheader">Actions</span>
+  </div>
+  <div th:each="g : ${groups}" class="tr" role="row" style="grid-template-columns: 2fr 1fr 1fr 1fr 0.8fr;">
+    <span role="cell"><span th:class="|g g-${g.name}|" th:text="${g.name}">group</span></span>
+    <span role="cell" th:text="${g.users}">0</span>
+    <span role="cell" th:text="${g.syncs}">0</span>
+    <span role="cell" th:text="${g.records}">0</span>
+    <span role="cell"><a th:href="@{|/admin/groups/${g.id}|}" th:attr="aria-label=|Edit group ${g.name}|">Edit</a></span>
+  </div>
+  <div th:if="${#lists.isEmpty(groups)}" class="tr" role="row"><span class="note">No groups yet.</span></div>
+</div>
+<div th:replace="~{fragments :: pager(${p})}"></div>
+<span class="note">A group can only be deleted when no user, sync entry or document uses it.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

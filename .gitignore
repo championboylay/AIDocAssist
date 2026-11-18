@@ -1,0 +1,11 @@
+target/
+data/
+uploads/
+.env
+sample-data/
+.playwright-mcp/
+zephyr/
+packaging/
+jira-screenshots/
+docs/
+.idea/

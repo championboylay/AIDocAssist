@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_sync.html: one tab per source (Upload first, the default), the Add upload dialog. -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: sync', '/static/admin.css')}"></head>
+<body>
+<!-- While anything is queued or syncing: admin.js reloads every 5 s, but never while a dialog is open. -->
+<meta th:if="${anyBusy}" name="refresh" content="5">
+<noscript th:if="${anyBusy}"><meta http-equiv="refresh" content="5"></noscript>
+<th:block th:replace="~{fragments :: topbar('sync')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Sync sources</h1>
+    <p>Each entry is one folder or one uploaded file with its own tag. Picking the tag here is the approval: synced documents go straight in with that tag.
+       Folders sync on their schedule or when you press Sync. Anything outside a configured entry is skipped, never guessed.</p>
+  </div>
+</div>
+
+<div th:if="${msg != ''}" class="msg ok" role="status" th:text="${msg}"></div>
+<p th:if="${anyBusy}" class="note" style="margin: 0;">A sync is queued or running; this page refreshes every 5 seconds.</p>
+
+<th:block th:with="label=${src == 'upload'} ? 'Upload' : 'Filesystem', color=${src == 'upload'} ? '#5A6270' : '#1F4A3E'">
+<nav class="src-tabs" aria-label="Sources">
+  <a th:class="${src == 'upload'} ? 'src-tab on' : 'src-tab'" th:href="@{/admin/sync?src=upload}" th:attr="aria-current=${src == 'upload'} ? 'page' : null"><span class="ic" style="color: #5A6270"><svg th:replace="~{fragments :: icon('upload', 15)}"></svg></span>Upload<span class="n" th:attr="aria-label=|${counts['upload']} entries|" th:text="${counts['upload']}">0</span></a>
+  <a th:class="${src == 'filesystem'} ? 'src-tab on' : 'src-tab'" th:href="@{/admin/sync?src=filesystem}" th:attr="aria-current=${src == 'filesystem'} ? 'page' : null"><span class="ic" style="color: #1F4A3E"><svg th:replace="~{fragments :: icon('folder', 15)}"></svg></span>Filesystem<span class="n" th:attr="aria-label=|${counts['filesystem']} entries|" th:text="${counts['filesystem']}">0</span></a>
+</nav>
+
+<section th:if="${#lists.isEmpty(entries)}" class="src empty" th:attr="aria-label=${label}">
+  <div class="src-head">
+    <span class="t"><span class="src-dot" th:style="|background: ${color}|"></span><th:block th:text="${label}"></th:block><span class="count">no entries yet</span></span>
+    <a th:if="${src == 'upload'}" th:href="@{/admin/sync#add-upload}" data-dialog="add-upload" aria-haspopup="dialog">+ Add upload</a>
+    <a th:unless="${src == 'upload'}" th:href="@{/admin/sync/new}">+ Add entry</a>
+  </div>
+</section>
+
+<section th:unless="${#lists.isEmpty(entries)}" class="src" th:attr="aria-label=${label}">
+  <div class="src-head">
+    <span class="t"><span class="src-dot" th:style="|background: ${color}|"></span><th:block th:text="${label}"></th:block>
+      <span class="count" th:text="|${p.total} entr${p.total == 1 ? 'y' : 'ies'}|">entries</span></span>
+    <a th:if="${src == 'upload'}" th:href="@{/admin/sync#add-upload}" data-dialog="add-upload" aria-haspopup="dialog">+ Add upload</a>
+    <a th:unless="${src == 'upload'}" th:href="@{/admin/sync/new}">+ Add entry</a>
+  </div>
+  <div class="scroll rows-stack">
+  <div th:each="e : ${entries}" th:class="${e.enabled} ? 'entry' : 'entry disabled'">
+    <span class="n" th:text="${e.name}">name</span>
+    <span th:unless="${e.upload()}" class="path" th:text="${e.folder}">folder</span>
+    <span th:if="${e.upload()}" class="path"><th:block th:if="${e.fileName}"><th:block th:text="|${e.fileKb} KB · |"></th:block><a th:href="@{${e.fileUrl()}}" style="font-family: var(--sans);">Download</a></th:block><span th:unless="${e.fileName}" class="missing" title="The stored original is gone from UPLOAD_DIR: Download fails. Upload it again with Sync."><svg th:replace="~{fragments :: icon('warn', 12)}"></svg> File missing</span></span>
+    <span class="pills"><span th:each="t : ${e.tags}" th:class="|g g-${t}|" th:text="${t}">tag</span></span>
+    <span class="muted"><th:block th:text="${e.synced}">never</th:block><th:block th:unless="${e.upload()}"><br><span class="note" th:text="${e.schedule}">Manual only</span></th:block></span>
+    <span class="muted" th:text="|${e.records} ${e.records == 1 ? 'file' : 'files'}|">0 files</span>
+    <span class="badges">
+      <th:block th:switch="${e.status}">
+        <span th:case="'syncing'" class="bdg busy"><svg th:replace="~{fragments :: icon('sync', 12)}"></svg> <th:block th:text="${e.stopping} ? 'Stopping…' : 'Syncing…'"></th:block></span>
+        <span th:case="'stopped'" class="bdg grey" th:title="${e.error}"><svg th:replace="~{fragments :: icon('stop', 12)}"></svg> Stopped</span>
+        <span th:case="'failed'" class="bdg fail"><svg th:replace="~{fragments :: icon('x', 12)}"></svg> Failed</span>
+        <span th:case="'ok'" class="bdg ok"><svg th:replace="~{fragments :: icon('check', 12)}"></svg> Synced</span>
+        <span th:case="*" class="bdg grey"><svg th:replace="~{fragments :: icon('circle', 12)}"></svg> Not synced yet</span>
+      </th:block>
+      <span th:if="${e.queued and e.status != 'syncing'}" class="bdg busy"><svg th:replace="~{fragments :: icon('sync', 12)}"></svg> Queued…</span>
+      <span th:if="${!e.enabled}" class="bdg grey">Disabled</span>
+      <span th:if="${e.skipped > 0}" class="bdg warn" title="Items filtered during sync (temp/lock files, unsupported types, hidden sheets, suspected secrets…)"><svg th:replace="~{fragments :: icon('warn', 12)}"></svg> <th:block th:text="|${e.skipped} skipped|"></th:block></span>
+    </span>
+    <span class="acts">
+      <a th:if="${e.enabled and !e.busy()}" th:href="@{|/admin/sync/${e.id}/run|}" th:attr="data-dialog=|sync-${e.id}|,aria-label=|Sync ${e.name}|" aria-haspopup="dialog" style="font-size: 11.5px; font-weight: 500;">Sync</a>
+      <form th:if="${e.status == 'syncing' and !e.stopping}" method="post" th:action="@{|/admin/sync/${e.id}/stop|}"><button type="submit" th:attr="aria-label=|Stop the sync of ${e.name}|">Stop</button></form>
+      <span th:if="${!(e.enabled and !e.busy()) and !(e.status == 'syncing' and !e.stopping)}" class="off" th:title="${!e.enabled} ? 'Disabled' : (${e.stopping} ? 'Stopping' : 'Queued')">Sync</span>
+      <a th:unless="${e.busy()}" th:href="@{|/admin/sync#del-${e.id}|}" th:attr="data-dialog=|del-${e.id}|,aria-label=|Delete ${e.name}|" aria-haspopup="dialog" style="font-size: 11.5px; color: var(--primary);">Delete</a>
+      <a th:href="@{|/admin/sync/${e.id}/history|}" th:attr="aria-label=|History of ${e.name}|" style="font-size: 11.5px; color: var(--muted);">History</a>
+      <a th:href="@{|/admin/sync/${e.id}|}" th:attr="aria-label=|Edit ${e.name}|" style="font-size: 11.5px; color: var(--muted);">Edit</a>
+    </span>
+    <!-- Outside .acts: its link-style button rules would restyle the dialog's buttons. A closed dialog takes no grid cell. -->
+    <th:block th:if="${e.enabled and !e.busy()}"><dialog th:replace="~{fragments :: syncDialog(${e})}"></dialog></th:block>
+    <dialog th:unless="${e.busy()}" class="modal" th:id="|del-${e.id}|" th:attr="aria-labelledby=|del-${e.id}-h|">
+      <div class="panel">
+        <h2 th:id="|del-${e.id}-h|" style="margin: 0; font-size: 16px; font-weight: 600;" th:text="|Delete ${e.name}?|">Delete?</h2>
+        <p style="margin: 0; font-size: 13px; color: var(--text-2);">
+          <th:block th:unless="${e.upload()}">Its <th:block th:text="|${e.records} ${e.records == 1 ? 'file' : 'files'}|"></th:block> leave search and chat now. Its sync history is kept.
+          The folder itself is not touched. <b>This can't be undone</b>; add the entry again and sync it to bring it back.</th:block>
+          <th:block th:if="${e.upload()}">The stored file, its sections in search and chat, and its sync history are removed.
+          <b>This can't be undone</b>; upload the file again to bring it back.</th:block></p>
+        <div class="actions">
+          <form method="post" th:action="@{|/admin/sync/${e.id}/delete|}"><button class="btn-sm btn-danger" type="submit">Delete</button></form>
+          <form method="dialog"><button class="btn-sm btn-outline" type="submit">Cancel</button></form>
+        </div>
+      </div>
+    </dialog>
+    <span th:if="${e.status == 'failed' and e.error != null}" class="err" role="note" th:text="${e.error}">error</span>
+  </div>
+  </div>
+  <div style="padding: 10px 18px; border-top: 1px solid var(--border-soft);"><div th:replace="~{fragments :: pager(${p})}"></div></div>
+</section>
+
+</th:block>
+
+<!-- Deleted entries: nothing left but their sync history (SKB, owner's decision 2026-10-02). Uploads leave none (CLAUDE.md). -->
+<details th:unless="${#lists.isEmpty(deleted)}" class="deleted-entries" style="margin-top: 10px; font-size: 12.5px; color: var(--text-2);">
+  <summary style="cursor: pointer;" th:text="|Deleted entries (${#lists.size(deleted)})|">Deleted entries</summary>
+  <ul style="margin: 6px 0 0; padding-left: 18px;">
+    <li th:each="d : ${deleted}"><th:block th:text="${d.name}"></th:block> <span class="muted" th:text="|· ${d.folder} · deleted ${d.deleted}|"></span>
+      · <a th:href="@{|/admin/sync/${d.id}/history|}" th:attr="aria-label=|History of deleted entry ${d.name}|" style="color: var(--muted);">History</a></li>
+  </ul>
+</details>
+
+<!-- "Add upload" (CLAUDE.md "Upload"): each file becomes its own entry, named after it, with the tags chosen here; stored and
+     synced at once. A name matching an existing upload is a new version of it (and keeps its tags). -->
+<dialog class="modal" id="add-upload" aria-labelledby="add-upload-h">
+  <form class="panel" method="post" th:action="@{/admin/sync/upload}" enctype="multipart/form-data">
+    <h2 id="add-upload-h" style="margin: 0; font-size: 16px; font-weight: 600;">Add upload</h2>
+    <div th:replace="~{fragments :: dropzone('files', ${accept}, true, null, 'Drag files here')}"></div>
+    <span class="note">Each file becomes its own entry, named after the file. A file with the same name as an existing
+      upload replaces that file (and keeps its tags).</span>
+    <fieldset style="border: 0; padding: 0; margin: 0;">
+      <legend style="font-size: 12.5px; font-weight: 600; margin-bottom: 8px;">Tags: who can see these files</legend>
+      <div class="pills">
+        <label th:each="g : ${allGroups}" class="toggle"><input type="checkbox" name="tags" th:value="${g}" th:checked="${g == 'general'}"><span th:text="${g}">group</span></label>
+      </div>
+    </fieldset>
+    <div class="actions">
+      <button class="btn-sm" type="submit">Sync</button>
+      <button class="btn-sm btn-outline" type="submit" formmethod="dialog" formnovalidate>Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<span class="note">"skipped" counts items filtered during sync (temp/lock files, unsupported types, hidden sheets, suspected secrets…). Review them with SQL on <code>ingest_skips</code>.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

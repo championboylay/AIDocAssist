@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Phase 4 debug page: the raw evidence for a question, no LLM. Built from SKB's admin frame and table styles
+     (SKB itself only has the command-line view, `python -m skb.retrieval.fusion`). -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: retrieval', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('retrieval')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Retrieval</h1>
+    <p>The evidence a question would get, before any model sees it: three retrievers (meaning, words, rare identifiers),
+       each limited to the chosen groups, fused into at most 8 sections, at most 3 per document.</p>
+  </div>
+</div>
+
+<form class="panel" method="get" th:action="@{/admin/retrieval}" style="max-width: none;">
+  <div class="field">
+    <label for="q">Question</label>
+    <input id="q" name="q" type="text" maxlength="500" required th:value="${q}" placeholder="e.g. What is the error message format for the real-time response?">
+  </div>
+  <fieldset class="field" style="border: 0; padding: 0; margin: 0;">
+    <legend style="font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 8px;">Search as a user in these groups</legend>
+    <div class="pills">
+      <label th:each="g : ${allGroups}" class="toggle"><input type="checkbox" name="groups" th:value="${g}" th:checked="${#lists.contains(asGroups, g)}"><span th:text="${g}">group</span></label>
+    </div>
+    <span class="note">No groups = sees nothing, and nothing is searched. Disabled sync entries are never searched.</span>
+  </fieldset>
+  <div class="actions"><button class="btn-sm" type="submit">Search</button></div>
+</form>
+
+<div th:if="${error}" class="msg err" role="alert" th:text="${error}"></div>
+
+<th:block th:if="${q != '' and error == null}">
+<p class="note" style="margin: 0;">Rare tokens searched:
+  <th:block th:if="${#lists.isEmpty(result.rareTokens)}">none</th:block>
+  <th:block th:each="t, it : ${result.rareTokens}"><code th:text="${t.token}">token</code> <span th:text="|(idf ${#numbers.formatDecimal(t.idf, 1, 2)})|"></span><th:block th:unless="${it.last}">, </th:block></th:block>
+</p>
+
+<div class="table" role="table" aria-label="Evidence">
+  <div class="tr th" role="row" style="grid-template-columns: 0.4fr 0.7fr 1.6fr 2fr 4fr;">
+    <span role="columnheader">#</span><span role="columnheader">Score</span><span role="columnheader">Found by (rank)</span>
+    <span role="columnheader">Document · section</span><span role="columnheader">Excerpt</span>
+  </div>
+  <div th:each="h, it : ${result.hits}" class="tr" role="row" style="grid-template-columns: 0.4fr 0.7fr 1.6fr 2fr 4fr; align-items: start;">
+    <span role="cell" class="num" th:text="|E${it.count}|">E1</span>
+    <span role="cell" class="num" th:text="${#numbers.formatDecimal(h.score, 1, 4)}">0.0489</span>
+    <span role="cell" style="font: 11.5px var(--mono);">
+      <th:block th:each="r : ${retrievers}"><span th:text="|${r.substring(0, 4)}: ${h.ranks.containsKey(r) ? h.ranks.get(r) : '-'}|" th:class="${h.ranks.containsKey(r)} ? '' : 'note'">vect: 1</span><br></th:block>
+    </span>
+    <span role="cell">
+      <span th:style="|color: ${h.source == 'upload' ? '#5A6270' : '#1F4A3E'}; font: 600 10px var(--mono); letter-spacing: .05em;|"
+            th:text="${h.source == 'upload'} ? 'UPLOAD' : 'FILESYSTEM'">SOURCE</span><br>
+      <b th:text="${h.file()}">file</b><br>
+      <span class="note" th:text="${h.section()}">section</span>
+    </span>
+    <span role="cell" style="font-size: 12px; color: var(--text-2); overflow-wrap: anywhere;" th:text="${h.excerpt()}">excerpt</span>
+  </div>
+  <div th:if="${#lists.isEmpty(result.hits)}" class="tr" role="row"><span class="note" style="grid-column: 1 / -1;">No evidence found for these groups.</span></div>
+</div>
+<span class="note">Score = Σ 1 / (60 + rank) over the retrievers that found the section; found by several beats first in one.
+  A "-" means that retriever didn't return it in its top 20.</span>
+</th:block>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

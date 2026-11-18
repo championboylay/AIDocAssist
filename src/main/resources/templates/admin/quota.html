@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Not in SKB: each Gemini key's use as this app counts it, and which embedding model holds how many records. -->
+<head th:replace="~{fragments :: head('AI Doc Assist — admin: quota', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('quota')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1>Quota</h1>
+    <p>Embedding budget per Google AI Studio key, as this app counts it. The app waits for the next minute before going over a
+       per-minute budget, and moves to the next key (then Ollama) when a key's day is used up.</p>
+  </div>
+</div>
+
+<div th:if="${#lists.isEmpty(keys)}" class="msg err" role="status">No Gemini keys are set (GEMINI_API_KEYS), so every embedding goes to Ollama.</div>
+
+<div th:unless="${#lists.isEmpty(keys)}" class="table" role="table" aria-label="Gemini keys">
+  <div class="tr th" role="row" style="grid-template-columns: 1fr 2fr 2fr 2fr 2.4fr;">
+    <span role="columnheader">Key</span><span role="columnheader">Requests, last minute</span><span role="columnheader">Tokens, last minute (est.)</span>
+    <span role="columnheader">Requests today</span><span role="columnheader">Last refusal from Google</span>
+  </div>
+  <div th:each="k : ${keys}" class="tr" role="row" style="grid-template-columns: 1fr 2fr 2fr 2fr 2.4fr; align-items: start;">
+    <span role="cell"><b th:text="|Key ${k.index}|">Key 1</b><br><code th:text="${k.key}">…abcd</code></span>
+    <span role="cell" th:with="p=${k.minuteRequests * 100 / k.rpm}">
+      <span class="num" th:text="|${k.minuteRequests} / ${k.rpm}|">0 / 80</span>
+      <span class="meter" aria-hidden="true"><span th:style="|width: ${p}%; background: var(${p >= 80 ? '--warn' : '--ok'});|"></span></span>
+    </span>
+    <span role="cell" th:with="p=${k.minuteTokens * 100 / k.tpm}">
+      <span class="num" th:text="|${#numbers.formatInteger(k.minuteTokens, 1, 'COMMA')} / ${#numbers.formatInteger(k.tpm, 1, 'COMMA')}|">0 / 25,000</span>
+      <span class="meter" aria-hidden="true"><span th:style="|width: ${p}%; background: var(${p >= 80 ? '--warn' : '--ok'});|"></span></span>
+    </span>
+    <span role="cell" th:with="p=${k.today * 100 / k.rpd}">
+      <span class="num" th:text="|${k.today} / ${k.rpd}|">0 / 950</span>
+      <span th:if="${k.today >= k.rpd}" class="bdg warn">used up</span>
+      <span class="meter" aria-hidden="true"><span th:style="|width: ${p}%; background: var(${p >= 80 ? '--warn' : '--ok'});|"></span></span>
+      <span class="note" th:text="|${k.rpd - k.today} left · resets ${time.format(k.resetsAt)}|">950 left</span>
+    </span>
+    <span role="cell" style="font-size: 12px; overflow-wrap: anywhere;">
+      <th:block th:if="${k.lastRefusalAt == null}"><span class="note">none since the app started</span></th:block>
+      <th:block th:if="${k.lastRefusalAt != null}">
+        <span class="num" th:text="${time.format(k.lastRefusalAt)}">2026-10-24 12:00</span><br>
+        <span class="note" th:text="${k.lastRefusal}">429 quota</span>
+      </th:block>
+    </span>
+  </div>
+</div>
+<p class="note" th:unless="${#lists.isEmpty(keys)}" style="margin: 0;">
+  Model <code th:text="${model}">gemini-embedding-2</code>. Every text counts as one request; tokens are estimated at 3 characters each.
+  These are this app's own counts since it started: they restart with the app, and don't see other apps using the same key.
+  Google's own figures are in <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Google AI Studio</a>.
+</p>
+
+<h2 style="font-size: 14px; margin: 24px 0 8px;">Records by embedding model</h2>
+<div class="table" role="table" aria-label="Records by embedding model">
+  <div class="tr th" role="row" style="grid-template-columns: 3fr 1fr;"><span role="columnheader">Model</span><span role="columnheader">Records</span></div>
+  <div th:each="r : ${records}" class="tr" role="row" style="grid-template-columns: 3fr 1fr;">
+    <span role="cell"><code th:text="${r.key}">gemini/gemini-embedding-2</code>
+      <span th:unless="${r.key == preferred}" class="bdg warn">fallback</span></span>
+    <span role="cell" class="num" th:text="${r.value}">83</span>
+  </div>
+  <div th:if="${#maps.isEmpty(records)}" class="tr" role="row"><span class="note" style="grid-column: 1 / -1;">No embedded records yet.</span></div>
+</div>
+<span class="note">Records marked "fallback" were embedded by another model, for example while every key was used up. "Re-read all" on their
+  sync entry re-embeds them with <code th:text="${preferred}">gemini/…</code>.</span>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

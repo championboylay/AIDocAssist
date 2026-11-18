@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!-- Ported from SKB admin_sync_form.html (Filesystem fields only). -->
+<head th:replace="~{fragments :: head(${entry} ? |AI Doc Assist — admin: edit ${entry.name}| : 'AI Doc Assist — admin: add Filesystem entry', '/static/admin.css')}"></head>
+<body>
+<th:block th:replace="~{fragments :: topbar('sync')}"></th:block>
+<main class="content">
+<div class="head">
+  <div>
+    <h1 th:text="${entry} ? |Edit ${entry.name}| : 'Add Filesystem entry'">Add entry</h1>
+    <p><a th:href="@{/admin/sync}">&larr; All sync sources</a></p>
+  </div>
+</div>
+
+<form class="panel" method="post" th:action="${entry} ? @{|/admin/sync/${entry.id}|} : @{/admin/sync/new}">
+  <div th:unless="${#lists.isEmpty(errors)}" class="msg err" role="alert">Please fix:<ul><li th:each="e : ${errors}" th:text="${e}"></li></ul></div>
+
+  <div class="field">
+    <label>Source</label>
+    <span style="font-size: 13px; display: flex; align-items: center; gap: 8px;">
+      <span th:style="|width: 9px; height: 9px; border-radius: 50%; background: ${entry != null and entry.upload() ? '#5A6270' : '#1F4A3E'}; display: inline-block;|"></span><th:block th:text="${entry != null and entry.upload()} ? 'Upload' : 'Filesystem'">Filesystem</th:block></span>
+  </div>
+
+  <div th:if="${entry != null and entry.upload()}" class="field">
+    <label>File</label>
+    <span style="font-size: 13px;" th:text="${entry.name}">name</span>
+    <span class="note">An upload is named after its file; a file with this name uploaded again is a new version of it. Upload a new version with Sync on the list.</span>
+  </div>
+  <div th:unless="${entry != null and entry.upload()}" class="field">
+    <label for="name">Entry name</label>
+    <input id="name" name="name" type="text" required placeholder="e.g. Finance folder" th:value="${form.name}">
+  </div>
+
+  <div th:unless="${entry != null and entry.upload()}" class="field">
+    <label for="folder_path">Folder path</label>
+    <input id="folder_path" name="folder_path" type="text" required placeholder="C:\Shares\Finance or \\server\share\Finance"
+           th:value="${form.folder}" style="font-family: var(--mono);">
+    <span class="note">As the server sees it. Can't overlap another entry's folder.
+      <th:block th:if="${entry}">Changing it: the next sync removes documents from the old folder and reads the new one.</th:block></span>
+  </div>
+
+  <fieldset class="field" style="border: 0; padding: 0; margin: 0;">
+    <legend style="font-size: 11.5px; font-weight: 600; color: var(--text-2); margin-bottom: 8px;">Tags: category applied to everything synced from here</legend>
+    <div class="pills">
+      <label th:each="g : ${allGroups}" class="toggle"><input type="checkbox" name="tags" th:value="${g}" th:checked="${#lists.contains(form.tags, g)}"><span th:text="${g}">group</span></label>
+    </div>
+    <span class="note">This is the approval: every file synced from this entry gets these tags, no per-file review.
+      <th:block th:if="${entry}"><b>Changing them applies immediately</b> to the <th:block th:text="${entry.records}"></th:block> files already synced from here.</th:block></span>
+  </fieldset>
+
+  <div th:unless="${entry != null and entry.upload()}" class="field">
+    <label for="schedule">Schedule</label>
+    <select id="schedule" name="schedule"
+            style="height: 40px; max-width: 260px; border: 1px solid var(--input-border); border-radius: 8px; padding: 0 10px; font: 13px var(--sans); background: var(--surface);">
+      <option value="off" th:selected="${form.schedule == 'off'}">Off (manual only)</option>
+      <option th:each="m : ${choices}" th:value="${m}" th:selected="${form.schedule == #strings.toString(m)}" th:text="|Every ${m / 60} h|">Every 24 h</option>
+    </select>
+    <span class="note">Files in a folder change without the app knowing, so it can sync this entry by itself.
+      A scheduled run is an ordinary sync (only changed files are read). Nothing syncs while the app is stopped.</span>
+  </div>
+
+  <label class="check"><input type="checkbox" name="enabled" th:checked="${form.enabled}">
+    <span>Enabled<small>Disabled entries aren't synced, and their documents are kept but hidden from search and chat until it is enabled again.</small></span></label>
+
+  <div class="actions">
+    <button class="btn-sm" type="submit" th:text="${entry} ? 'Save changes' : 'Save entry'">Save</button>
+    <a class="btn-sm btn-outline" th:href="@{/admin/sync}">Cancel</a>
+  </div>
+</form>
+</main>
+<script th:src="@{/static/admin.js?v=3}"></script>
+</body>
+</html>

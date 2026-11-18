@@ -1,0 +1,251 @@
+/* Ported unchanged from SKB skb/api/templates/chat.html (inline <style> there; a file here). */
+  /* From the mockup's NewThread + App artboards */
+  body { height: 100vh; overflow: hidden; }
+  .shell { display: flex; height: 100vh; }
+  .side { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); }
+  .side-top { padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--border); }
+  .logo { display: flex; align-items: baseline; gap: 8px; }
+  .logo b { font-family: var(--mono); font-weight: 600; font-size: 16px; letter-spacing: .02em; }
+  .logo span { font-size: 11px; color: var(--faint); }
+  .new-btn { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border: 1px solid var(--input-border);
+             border-radius: 8px; font-size: 12.5px; color: var(--text-2); font-weight: 500; }
+  .new-btn:hover, .new-btn.current { border-color: var(--text-2); color: var(--text); text-decoration: none; }
+  .new-btn.current { background: var(--surface-2); }
+  .threads { flex-grow: 1; overflow-y: auto; padding: 10px; }
+  .threads h2 { font: 400 10.5px var(--mono); letter-spacing: .06em; color: var(--faint); text-transform: uppercase; padding: 6px 8px 4px; margin: 0; }
+  .ti { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 8px; color: inherit; }
+  .ti:hover { background: var(--chip-bg); text-decoration: none; }
+  .ti.current { background: var(--primary-soft); }
+  .ti .n { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ti.current .n { font-weight: 600; color: var(--primary); }
+  .ti .w { font-size: 11px; color: var(--faint); }
+  /* Delete icon on every thread row (grey; burgundy on hover, as Delete is an important action) */
+  .ti-row { position: relative; } .ti-row .ti { padding-right: 36px; }
+  .ti-del { position: absolute; top: 9px; right: 6px; width: 26px; height: 26px; border-radius: 6px; color: var(--faint);
+            display: flex; align-items: center; justify-content: center; }
+  .ti-del:hover { color: var(--primary); background: var(--primary-soft); text-decoration: none; }
+  .ti-del svg { width: 14px; height: 14px; }
+  /* Shown only on the row under the mouse (or reached by Tab). Touch screens have no hover, so
+     there it stays visible, or a thread couldn't be deleted at all. */
+  @media (hover: hover) {
+    .ti-del { opacity: 0; }
+    .ti-row:hover .ti-del, .ti-del:focus-visible { opacity: 1; }
+  }
+  /* Delete confirmation: native <dialog> (opened by chat.js), same look as the admin dialogs */
+  .modal { padding: 0; border: 0; background: none; width: min(440px, calc(100vw - 32px)); }
+  .modal::backdrop { background: rgba(28, 26, 23, .45); }
+  .dlg { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px;
+         display: flex; flex-direction: column; gap: 14px; box-shadow: 0 12px 40px rgba(0, 0, 0, .18); }
+  .dlg h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .dlg p { margin: 0; font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
+  .dlg .actions { display: flex; gap: 10px; } .dlg form { margin: 0; }
+  .dlg button { height: 36px; padding: 0 16px; border-radius: 8px; font: 500 12.5px var(--sans); cursor: pointer;
+                background: var(--surface); color: var(--text-2); border: 1px solid var(--input-border); }
+  .dlg button:hover { background: var(--surface-2); border-color: var(--text-2); color: var(--text); }
+  .dlg button.danger { font-weight: 600; color: var(--primary); border-color: var(--primary); }
+  .dlg button.danger:hover { background: var(--primary-soft); color: var(--primary); }
+  .side-foot { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+  .avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--chip-bg); color: var(--text-2);
+            display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; flex-shrink: 0; }
+  .foot-links { display: flex; gap: 12px; flex-wrap: wrap; font: 10.5px var(--mono); }
+  .foot-links a, .foot-links button { color: var(--faint); }
+  .foot-links button { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+  .foot-links a:hover, .foot-links button:hover { color: var(--primary); }
+
+  .main { flex-grow: 1; display: flex; flex-direction: column; min-width: 0; }
+  /* Thread header: title + scope on the left, a ⋮ menu (rename) on the right */
+  .thead { padding: 12px 36px; border-bottom: 1px solid var(--border); background: var(--surface); display: flex; align-items: center;
+           justify-content: space-between; gap: 16px; }
+  .thead-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .thead h1 { margin: 0; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .scope-label { font: 10px var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--faint); margin-right: 2px; }
+  .scope-chip { font-size: 11px; font-weight: 500; line-height: 1; padding: 4px 9px; border-radius: 999px;
+                background: var(--chip-bg); color: var(--text-2); border: 1px solid var(--border); }
+  .menu { position: relative; }
+  .menu summary { list-style: none; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center;
+                  justify-content: center; font-size: 18px; line-height: 1; color: var(--muted); }
+  .menu summary::-webkit-details-marker { display: none; }
+  .menu summary:hover, .menu[open] summary { background: var(--chip-bg); color: var(--text); }
+  .menu-pop { position: absolute; right: 0; top: 38px; z-index: 5; width: 300px; padding: 14px; background: var(--surface);
+              border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .menu-pop form { display: flex; flex-direction: column; gap: 8px; margin: 0; }
+  .menu-pop label { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+  .menu-pop .row { display: flex; gap: 8px; } .menu-pop input { flex-grow: 1; height: 34px; }
+  .menu-pop .btn { height: 34px; padding: 0 14px; font-size: 12.5px; }
+
+  /* Messages: one centred column; "You" and "Assistant" blocks, both left-aligned */
+  .convo { flex-grow: 1; overflow-y: auto; padding: 24px 36px; display: flex; flex-direction: column; gap: 22px; }
+  /* flex-shrink: 0 — the thread is a fixed-height scrolling column; without it, cards with
+     overflow:hidden (rounded corners) get squeezed to a sliver once the thread is taller than the screen. */
+  .convo > * { width: 100%; max-width: 780px; margin: 0 auto; flex-shrink: 0; }
+  /* You: a small bubble on the right. SKB: a structured card (head / answer / sources), so the two
+     never look alike (owner's direction, 2026-10-01). */
+  .q { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .q .q-text { max-width: 75%; background: #E5E7EB; border-radius: 14px 14px 3px 14px; padding: 10px 16px; font-size: 13.5px;
+               line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .time { font-size: 10.5px; color: var(--faint); }
+  .a { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+       box-shadow: 0 1px 2px rgba(28,26,23,.04); overflow: hidden; }
+  .a-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 18px 0; }
+  .who-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+  .a-body { padding: 10px 18px 14px; }
+  .a-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 18px 14px; border-top: 1px solid var(--border-soft); background: var(--surface-2); }
+  .a.abstain { border-left: 3px solid var(--warn); }
+  .mark { width: 18px; height: 18px; border-radius: 5px; background: var(--primary); display: inline-flex; align-items: center; justify-content: center;
+          font: 700 10px var(--mono); color: #fff; flex-shrink: 0; }
+  .mark.warn { background: var(--warn); }
+  .rdet { font-size: 11.5px; color: var(--muted); }
+  .rdet summary { cursor: pointer; width: fit-content; color: var(--faint); font-size: 11px; }
+  .rdet summary:hover { color: var(--text-2); }
+  .rdet dl { margin: 8px 0 0; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+  .rdet dt { color: var(--faint); } .rdet dd { margin: 0; color: var(--text-2); overflow-wrap: anywhere; }
+  .a p { margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+  .a.abstain p { font-size: 13.5px; color: var(--text-2); }
+  .ab-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ab-label { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .act { font-size: 12px; font-weight: 500; padding: 6px 12px; border: 1px solid var(--input-border); border-radius: 999px;
+         background: var(--surface); color: var(--text-2); cursor: pointer; }
+  .act:hover { border-color: var(--primary); color: var(--primary); text-decoration: none; }
+  .cite { font: 600 10.5px var(--mono); padding: 1px 6px; border-radius: 5px; background: #F3ECD9; color: #6B5220; }
+  .cite:hover { text-decoration: none; outline: 1px solid #6B5220; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-ev { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; padding: 5px 10px; border: 1px solid var(--border);
+             border-radius: 999px; background: var(--surface); color: var(--text); max-width: 100%; }
+  .chip-ev:hover, .chip-ev.active { border-color: var(--text-2); text-decoration: none; }
+  .chip-ev.active { background: var(--surface-2); }
+  .chip-ev .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 280px; }
+  /* Checked quote: a small tick on each chip of an answered turn (the green of "resolved") */
+  .chip-ev .tick { width: 12px; height: 12px; flex-shrink: 0; fill: none; stroke: var(--ok); stroke-width: 1.8;
+                   stroke-linecap: round; stroke-linejoin: round; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .hint { font-size: 10.5px; color: var(--faint); }
+
+  /* Composer: one box with the send button inside it */
+  .composer { padding: 14px 36px 20px; border-top: 1px solid var(--border); background: var(--surface); }
+  .composer > * { max-width: 780px; margin-left: auto; margin-right: auto; }
+  .ask { position: relative; display: flex; }
+  /* The question box: a textarea (Enter sends, Shift+Enter = new line; chat.js), growing up to ~6 lines */
+  .ask textarea { flex-grow: 1; min-height: 46px; max-height: 160px; padding: 12px 54px 12px 14px; resize: none; overflow-y: auto;
+                  border: 1px solid var(--input-border); border-radius: 12px; background: var(--bg); color: var(--text);
+                  font: 14px/1.45 var(--sans); }
+  .ask textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(122,46,59,.15); }
+  .ask-keys { font-size: 10.5px; color: var(--faint); margin-top: 6px; }
+  .send { position: absolute; right: 6px; bottom: 5px; width: 36px; height: 36px; border: 0; border-radius: 9px;
+          background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .send:hover { background: var(--primary-hover); }
+  .send:focus-visible { outline: 3px solid rgba(122,46,59,.35); outline-offset: 2px; }
+  .send svg { width: 17px; height: 17px; }
+  .busy .btn, .busy button { opacity: .6; pointer-events: none; }
+  .busy textarea { color: var(--faint); }
+  .a.pending .pending-text { color: var(--muted); font-size: 13.5px; }
+  .dots::after { content: ""; animation: dots 1.2s steps(4, end) infinite; }
+  @keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+  @media (prefers-reduced-motion: reduce) { .dots::after { animation: none; content: "..."; } }
+
+  /* Motion: feedback and continuity only, plus one authored moment (the citation's evidence being
+     marked, see .ev .quote below). Everything is visible by default; a failed animation hides nothing. */
+  :root { --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --cite-gold: #9C7A2E; }
+  .ti, .chip-ev, .act, .new-btn, .examples button, .menu summary, .dlg button, .ti-del, .send, .btn {
+    transition: background-color .12s, border-color .12s, color .12s, opacity .12s, transform .1s; }
+  .send:active, .btn:active { transform: scale(.94); }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+  @keyframes slide-in { from { opacity: 0; transform: translateX(14px); } }
+  /* Asking: your question, then the pending card, settle into the thread (chat.js adds them) */
+  .convo > .q:nth-last-child(2):has(+ .a.pending) { animation: rise .22s var(--ease-out); }
+  .a.pending { animation: rise .26s .06s var(--ease-out) both; position: relative; }
+  /* The wait is 15-40 s: a slow sweep along the card's top edge says "still working", not "frozen" */
+  .a.pending::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--input-border) 40%, var(--muted) 50%, var(--input-border) 60%, transparent);
+    background-size: 50% 100%; background-repeat: no-repeat; animation: sweep 1.6s ease-in-out infinite; }
+  @keyframes sweep { from { background-position: -100% 0; } to { background-position: 200% 0; } }
+  /* The finished answer arrives where the pending card was (the page reloads at #latest) */
+  .a:target, .a.arrived { animation: fade .3s var(--ease-out); }
+  .menu[open] .menu-pop { animation: pop .16s var(--ease-out); transform-origin: top right; }
+  .modal[open] { animation: pop .18s var(--ease-out); }
+  .modal[open]::backdrop { animation: fade .18s ease-out; }
+  /* Evidence panel: slides in when first opened; swapping citations cross-fades the card */
+  .panel { animation: slide-in .28s var(--ease-out); }
+  .ev.open, .ev:target, .sg.open, .sg:target { animation: fade .18s ease-out; }
+  /* The authored moment: opening a citation marks its excerpt. The quote's rule draws down in the
+     same gold as the E1/E2 tag, tying the chip you clicked to the words it stands for. */
+  .ev .quote { position: relative; border-left-color: transparent; }
+  .ev .quote::before { content: ""; position: absolute; left: -2px; top: 0; bottom: 0; width: 2px; border-radius: 1px;
+    background: var(--cite-gold); transform-origin: top; animation: mark .5s .1s var(--ease-out) both; }
+  @keyframes mark { from { transform: scaleY(0); opacity: .4; } }
+  /* Delight: when a fresh answer lands, its ticks draw in chip by chip, as if each quote were being
+     signed off. Only on arrival (#latest, .arrived from chat.js); reopened threads show them still. */
+  .a:target .chip-ev .tick path, .a.arrived .chip-ev .tick path { stroke-dasharray: 12; animation: tick .36s calc(.35s + min(var(--i), 5) * .12s) var(--ease-out) both; }
+  @keyframes tick { from { stroke-dashoffset: 12; } to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    /* Keep what confirms a state (fades, colour); drop movement and the loop */
+    .convo > .q:nth-last-child(2):has(+ .a.pending), .a.pending, .menu[open] .menu-pop, .modal[open], .panel { animation: fade .15s ease-out; }
+    .a.pending::before { animation: none; background: var(--input-border); }
+    .ev .quote::before, .a:target .chip-ev .tick path, .a.arrived .chip-ev .tick path { animation: none; }
+    .send:active, .btn:active { transform: none; }
+  }
+  .err { font-size: 12px; color: var(--primary); background: var(--primary-soft); padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; max-width: 780px; }
+
+  .empty { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px 40px; overflow-y: auto; }
+  .intro { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .empty h1 { margin: 0; font-size: 36px; font-weight: 600; letter-spacing: -.025em; line-height: 1.1; text-align: center; text-wrap: balance; }
+  .empty p { margin: 0; font-size: 14.5px; color: var(--muted); max-width: 460px; line-height: 1.5; text-align: center; text-wrap: balance; }
+  .intro .cite { margin-left: 3px; vertical-align: 1px; }
+  /* Question card: the answer card's shape (white body, tinted foot), with the focus ring on the whole card */
+  .ask-card { width: 100%; max-width: 680px; flex-direction: column; background: var(--surface); border: 1px solid var(--input-border);
+              border-radius: 14px; box-shadow: 0 1px 2px rgba(28,26,23,.04), 0 10px 30px rgba(0,0,0,.06); overflow: hidden;
+              transition: border-color .12s, box-shadow .12s; }
+  .ask-card:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(122,46,59,.15), 0 10px 30px rgba(0,0,0,.06); }
+  .empty .ask-card textarea { min-height: 76px; max-height: 220px; padding: 18px 20px 10px; border: 0; border-radius: 0; background: none;
+                              font-size: 16px; line-height: 1.5; }
+  .empty .ask-card textarea:focus { box-shadow: none; }
+  .ask-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 20px;
+              background: var(--surface-2); border-top: 1px solid var(--border-soft); }
+  .ask-card .send { position: static; width: 40px; height: 40px; flex-shrink: 0; }
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 680px; }
+  .ex-h { flex-basis: 100%; text-align: center; font: 400 11px var(--mono); letter-spacing: .06em; color: var(--faint); text-transform: uppercase; margin-bottom: 2px; }
+  .examples button { padding: 7px 14px; border: 1px solid var(--border); border-radius: 999px; font: 12px var(--sans); color: var(--muted); background: none; cursor: pointer; }
+  .examples button:hover { border-color: var(--text-2); color: var(--text); }
+
+  /* Evidence panel: hidden until a citation is opened (#target without JS, .open with JS) */
+  .panel { width: 340px; flex-shrink: 0; display: none; flex-direction: column; overflow-y: auto; background: var(--surface); border-left: 1px solid var(--border); }
+  .panel:has(.ev:target), .panel:has(.ev.open), .panel:has(.sg:target), .panel:has(.sg.open) { display: flex; }
+  .ev, .sg { display: none; flex-direction: column; }
+  .ev:target, .ev.open, .sg:target, .sg.open { display: flex; }
+  .ev-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .ev-head b { font: 600 12.5px var(--mono); }
+  .ev-head a { font-size: 18px; color: var(--faint); line-height: 1; }
+  .ev-body { flex-grow: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .badge { font: 9.5px var(--mono); padding: 2px 7px; border-radius: 5px; background: var(--chip-bg); color: var(--text-2); }
+  .ev-title { font-size: 14px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+  .quote { margin: 0; font-size: 12.5px; color: var(--text-2); line-height: 1.6; padding-left: 10px; border-left: 2px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ev-file { font: 11px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+  .state { font-size: 11.5px; } .state.resolved { color: var(--ok); } .state.proposed { color: var(--warn); } .state.superseded { color: var(--faint); }
+  /* Suggested: deliberately plainer than cited evidence (no card, no source dot, no badge) */
+  .sg { padding: 14px 20px 18px; gap: 12px; border-top: 1px solid var(--border); }
+  .sg-head { display: flex; align-items: center; justify-content: space-between; font: 10.5px var(--mono); letter-spacing: .04em; color: var(--faint); text-transform: uppercase; }
+  .sg-head a { font-size: 18px; color: var(--faint); line-height: 1; text-transform: none; }
+  .sg ol { list-style: none; margin: 0 -8px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .sg li { display: grid; grid-template-columns: 26px 1fr; column-gap: 6px; padding: 9px 8px; border-radius: 8px; }
+  .sg li:hover { background: var(--surface-2); }
+  .sg .rk { font: 10.5px var(--mono); color: var(--faint); padding-top: 2px; }
+  .sg .it { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .sg .nm { font-size: 12.5px; font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+  .sg .wh { font: 10.5px var(--mono); color: var(--faint); overflow-wrap: anywhere; }
+  .sg .sn { color: var(--muted); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
+  .sg .mt { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 10.5px; color: var(--faint); }
+  .sg .mt a { font-size: 11.5px; }
+  .more { font-size: 11.5px; color: var(--muted); align-self: flex-start; }
+  .ev-foot { margin-top: auto; padding-top: 14px; font-size: 10.5px; color: var(--faint); border-top: 1px solid var(--border-soft); }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; } .shell { flex-direction: column; height: auto; }
+    .side { width: auto; border-right: 0; border-bottom: 1px solid var(--border); } .threads { max-height: 180px; }
+    .panel { width: auto; border-left: 0; border-top: 1px solid var(--border); }
+    .convo, .thead, .composer { padding-left: 16px; padding-right: 16px; } .menu-pop { width: 260px; }
+    .empty { padding: 32px 16px; } .empty h1 { font-size: 28px; }
+  }

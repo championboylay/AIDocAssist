@@ -1,0 +1,51 @@
+/* Ported unchanged from SKB skb/api/templates/base.html (inline <style> there; a file here). */
+  /* Palette: CLAUDE.md "color palette" + neutrals from the Login mockup. IBM Plex is used if
+     installed; no Google Fonts request, so the page makes no outside calls. */
+  :root {
+    /* Palette (CLAUDE.md "color palette", revised 2026-10-01): neutral greys everywhere; burgundy only for
+       primary actions (Ask, Save, Sync), the active item, important status and the brand mark. */
+    --primary: #7A2E3B; --primary-hover: #63242F; --primary-soft: #F5E9EB;
+    --bg: #F3F4F6; --surface: #FFFFFF; --surface-2: #F9FAFB; --border: #E5E7EB; --border-soft: #EEF0F2;
+    --input-border: #D1D5DB; --chip-bg: #F3F4F6;
+    --text: #1F2937; --text-2: #374151; --muted: #6B7280; --faint: #9CA3AF; --link: #374151;
+    --ok: #3A7A52; --ok-soft: #E3EFE7; --warn: #B45309; --warn-soft: #FEF3C7;
+    --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text); }
+  a { color: var(--link); text-decoration: none; }
+  /* Plain text links go burgundy on hover. Styled links (buttons, chips, tabs) keep their own colours:
+     a global a:hover colour would turn a burgundy button's text burgundy too. */
+  a:not([class]):hover { color: var(--primary); }
+  a:hover { text-decoration: underline; }
+  .centered { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+  .stack { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 28px; align-items: center; }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .brand b { font-family: var(--mono); font-weight: 600; font-size: 22px; letter-spacing: .02em; }
+  .brand span { font-size: 12.5px; color: var(--muted); }
+  .card { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+          padding: 32px 28px; display: flex; flex-direction: column; gap: 18px; }
+  .card h1 { margin: 0; font-size: 15px; font-weight: 600; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; }
+  label { font-size: 11.5px; font-weight: 600; color: var(--text-2); }
+  .hint { font-size: 11px; color: var(--faint); }
+  input[type=email], input[type=password], input[type=text] {
+    height: 40px; border: 1px solid var(--input-border); border-radius: 8px; padding: 0 12px;
+    font: 13.5px var(--sans); color: var(--text); background: var(--surface); }
+  input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(122,46,59,.15); }
+  .btn { height: 42px; border: 0; border-radius: 9px; background: var(--primary); color: #fff;
+         font: 600 13.5px var(--sans); cursor: pointer; padding: 0 18px; }
+  .btn:hover { background: var(--primary-hover); }
+  .btn:focus-visible { outline: 3px solid rgba(122,46,59,.35); outline-offset: 2px; }
+  .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--link); cursor: pointer; }
+  .link-btn:hover { text-decoration: underline; }
+  .error { font-size: 12px; color: var(--primary); background: var(--primary-soft); padding: 8px 12px; border-radius: 8px; }
+  .success { font-size: 12px; color: var(--ok); background: var(--ok-soft); padding: 8px 12px; border-radius: 8px; }
+  .footnote { font-size: 10.5px; color: var(--faint); font-family: var(--mono); }
+  .meta { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+  .chip { display: inline-block; font-size: 11.5px; background: var(--chip-bg); color: var(--text-2);
+          padding: 2px 8px; border-radius: 999px; margin: 0 4px 4px 0; }
+  .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 13px; }
